@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:project2/api/photos_api.dart';
-import 'package:project2/extension/extension.dart';
 import 'package:project2/local_storage/local_storage.dart';
 import 'package:project2/models/like_model.dart';
-import 'package:project2/models/photos_model.dart';
-import 'package:project2/providers/providers.dart';
+
+import 'package:project2/views/like_screen.dart';
+import 'package:project2/views/photo_screen.dart';
+import 'package:project2/views/profile_screen.dart';
 
 void main() {
-  runApp(ProviderScope(child: const MyApp()));
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -56,25 +55,18 @@ class _DashboardState extends State<Dashboard> {
   int currentIndex = 0;
   @override
   void initState() {
-    getPhotos();
     super.initState();
-  }
-
-  Future<List<Photo>> getPhotos() async {
-    final data = await PhotoApi().getPhotos();
-    print(data);
-    return data;
   }
 
   Widget getPages() {
     switch (currentIndex) {
       case 1:
-        return ProfileScreen();
+        return const ProfileScreen();
       case 2:
-        return LikeScreen();
+        return const LikeScreen();
 
       default:
-        return HomeScreen();
+        return const HomeScreen();
     }
   }
 
@@ -89,98 +81,12 @@ class _DashboardState extends State<Dashboard> {
               currentIndex = value;
             });
           },
-          items: [
+          items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Photos'),
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Profile'),
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Like')
           ]),
     );
-  }
-}
-
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final TextEditingController _controller = TextEditingController();
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: Text('Photos'),
-        ),
-        body: Column(
-          children: [
-            ref.watch(photoProvider).when(
-                data: (data) {
-                  return Expanded(
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _controller,
-                          decoration: InputDecoration(
-                            hintText: 'Search',
-                            suffixIcon: IconButton(
-                              icon: Icon(Icons.search),
-                              onPressed: () async {
-                                Future.delayed(Duration(seconds: 1));
-                                ref
-                                    .watch(photoProvider.notifier)
-                                    .searchPhotos(name: _controller.text);
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 30,
-                        ),
-                        if (data.isEmpty)
-                          Text('Sorry Could Not Fetch')
-                        else
-                          Expanded(
-                            child: GridView.builder(
-                                itemCount: 10,
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount:
-                                      2, // number of items in each row
-                                  mainAxisSpacing: 8.0, // spacing between rows
-                                  crossAxisSpacing:
-                                      8.0, // spacing between columns
-                                ),
-                                itemBuilder: (context, index) {
-                                  final photo = data[index].src!.original;
-
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) => ImageDetail(
-                                                    imageUrl: photo ?? '',
-                                                  )));
-                                    },
-                                    child: Image.network(
-                                      photo ?? '',
-                                      fit: BoxFit.cover,
-                                    ),
-                                  );
-                                }),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-                error: (e, s) {
-                  return Text('data');
-                },
-                loading: () => const CircularProgressIndicator.adaptive())
-          ],
-        ));
   }
 }
 
@@ -198,129 +104,30 @@ class ImageDetail extends StatelessWidget {
           children: [
             Image.network(imageUrl),
             ElevatedButton(
-                onPressed: () {
-                  LocalStorage().setString(LikeModel(
+              onPressed: () {
+                LocalStorage().setString(
+                  LikeModel(
                     id: 1,
                     name: imageUrl,
-                  ));
-                },
-                child: const Text('Like')),
+                  ),
+                );
+                Fluttertoast.showToast(
+                    msg: " Liked Successful",
+                    toastLength: Toast.LENGTH_SHORT,
+                    gravity: ToastGravity.CENTER,
+                    timeInSecForIosWeb: 1,
+                    backgroundColor: Colors.red,
+                    textColor: Colors.white,
+                    fontSize: 16.0);
+              },
+              child: const Text('Like'),
+            ),
             ElevatedButton(
               onPressed: () {},
               child: const Text('Set As Wallpaper'),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class LikeScreen extends StatelessWidget {
-  const LikeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Like Screen'),
-      ),
-      body: Column(
-        children: [
-          FutureBuilder(
-            future: LocalStorage().getString(),
-            builder: (context, snapShot) {
-              if (snapShot.data == null || snapShot.data!.isEmpty) {
-                return Text('Sorry No data Found');
-              }
-              if (snapShot.hasData) {
-                print(snapShot.data?.length);
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    children: snapShot.data!
-                        .map((e) => Image.network(e.name ?? ''))
-                        .toList(),
-                  ),
-                );
-              }
-              return const SizedBox();
-            },
-          )
-        ],
-      ),
-    );
-  }
-}
-
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    _controller = TextEditingController();
-    checkIsBirthday();
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _controller.dispose();
-  }
-
-  void checkIsBirthday() {
-    _controller.addListener(() {
-      if (_controller.text.isNotEmpty &&
-          _controller.text == DateTime.now().time) {
-        Fluttertoast.showToast(
-            msg: "Happy Birthday",
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.CENTER,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
-            fontSize: 16.0);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Profile Screen'),
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Padding(
-            padding: EdgeInsets.all(12),
-            child: TextFormField(
-              controller: _controller,
-              decoration: InputDecoration(
-                  prefixIcon: IconButton(
-                icon: const Icon(Icons.calendar_month),
-                onPressed: () async {
-                  final date = await showDatePicker(
-                      context: context,
-                      firstDate: DateTime(1990),
-                      lastDate: DateTime.now());
-                  if (date != null) {
-                    _controller.text = date.time;
-                  }
-                },
-              )),
-            ),
-          ),
-        ],
       ),
     );
   }

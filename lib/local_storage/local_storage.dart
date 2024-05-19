@@ -14,16 +14,22 @@ class LocalStorage {
   Future<List<LikeModel>> getString() async {
     final pref = await prefs;
     final data = pref.getString('like');
-    final list = jsonDecode(data!) as List<dynamic>;
-    final likeList = list.map((e) => LikeModel.fromJson(e)).toList();
-    return likeList.isEmpty ? [] : likeList;
+    if (data != null) {
+      final list = jsonDecode(data) as List<dynamic>;
+      final likeList = list.map((e) => LikeModel.fromJson(e)).toList();
+      return likeList.isEmpty ? [] : likeList;
+    }
+    return [];
   }
 
   Future<void> setString(LikeModel value) async {
     final pref = await prefs;
-    final list = [];
-    list.add(value);
-    print(list);
-    await pref.setString('like', jsonEncode(list));
+    final savedList = await getString();
+    final List<LikeModel> likeList = [];
+    if (savedList.isNotEmpty) {
+      likeList.addAll(savedList);
+    }
+    likeList.add(value);
+    await pref.setString('like', jsonEncode(likeList));
   }
 }
